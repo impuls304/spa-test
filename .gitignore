@@ -1,0 +1,30 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build and package artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE settings
+.idea/
+.vscode/
+
+# Environment variables and local secrets
+.env
+.env.*
+
+# macOS
+.DS_Store

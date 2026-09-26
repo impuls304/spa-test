@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spa-inventory-assistant"
+version = "0.1.0"
+description = "Демонстрационный MVP помощника по складскому учёту"
+requires-python = ">=3.11"
+dependencies = ["pymorphy3>=2.0.6,<3.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
