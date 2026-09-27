@@ -21,8 +21,18 @@ RUSSIAN_MONTHS = {
     "декабря": 12,
 }
 
-DIRECT_QUANTITY_PATTERN = re.compile(
-    r"(?P<qty>[−-]?\d+(?:[.,]\d+)?)\s*(?P<unit>мл|л|кг|г|пар|шт)\b",
+NUMERIC_DATE_PATTERNS = (
+    (re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b"), "%d.%m.%Y"),
+    (re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{2}\b"), "%d.%m.%y"),
+    (re.compile(r"\b\d{1,2}/\d{1,2}/\d{2}\b"), "%d/%m/%y"),
+    (re.compile(r"\b\d{4}-\d{1,2}-\d{1,2}\b"), "%Y-%m-%d"),
+)
+
+RUSSIAN_DATE_PATTERN = re.compile(
+    r"\b(?P<day>\d{1,2})\s+"
+    r"(?P<month>[а-яё]+)\s+"
+    r"(?P<year>\d{4})"
+    r"(?:\s*г\.)?",
     re.IGNORECASE,
 )
 
@@ -34,6 +44,29 @@ UNIT_CONVERSIONS = {
     "пар": ("пар", 1.0),
     "шт": ("шт", 1.0),
 }
+
+UNIT_PATTERN = "|".join(
+    sorted(
+        map(re.escape, UNIT_CONVERSIONS),
+        key=len,
+        reverse=True,
+    )
+)
+
+DIRECT_QUANTITY_PATTERN = re.compile(
+    rf"(?P<qty>[−-]?\d+(?:[.,]\d+)?)\s*(?P<unit>{UNIT_PATTERN})\b",
+    re.IGNORECASE,
+)
+
+PACKAGE_QUANTITY_PATTERN = re.compile(
+    rf"(?P<packages>\d+)\s*"
+    rf"(?:канистр(?:а|ы)?|уп\.?|упаковк(?:а|и|ок))\s+"
+    rf"по\s+"
+    rf"(?P<qty_per_package>\d+(?:[.,]\d+)?)\s*"
+    rf"(?P<unit>{UNIT_PATTERN})\b",
+    re.IGNORECASE,
+)
+
 
 def extract_operation(text: str) -> str | None:
     """Извлечь и нормализовать тип складской операции."""
@@ -49,47 +82,63 @@ def extract_operation(text: str) -> str | None:
         return "return"
     if "корректировка" in normalized_text:
         return "correction"
-    
+
     return None
 
-    
+
+def _extract_date_with_span(
+    text: str,
+) -> tuple[str, tuple[int, int]] | None:
+    """Извлечь нормализованную дату и её границы в исходном тексте."""
+    for pattern, date_format in NUMERIC_DATE_PATTERNS:
+        for match in pattern.finditer(text):
+            try:
+                parsed_date = datetime.strptime(match.group(), date_format)
+            except ValueError:
+                continue
+
+            return parsed_date.date().isoformat(), match.span()
+
+    for match in RUSSIAN_DATE_PATTERN.finditer(text):
+        month = RUSSIAN_MONTHS.get(match.group("month").lower())
+
+        if month is None:
+            continue
+
+        try:
+            parsed_date = datetime(
+                int(match.group("year")),
+                month,
+                int(match.group("day")),
+            )
+        except ValueError:
+            continue
+
+        return parsed_date.date().isoformat(), match.span()
+
+    return None
+
+
 def extract_date(text: str) -> str | None:
     """Извлечь дату и вернуть её в ISO-формате."""
-    match = re.search(r"\b\d{2}\.\d{2}\.\d{4}\b", text)
+    result = _extract_date_with_span(text)
 
-    if match is not None:
-        parsed_date = datetime.strptime(match.group(), "%d.%m.%Y")
-        return parsed_date.date().isoformat()   
-    
-    match = re.search(r"\b\d{2}\.\d{2}\.\d{2}\b", text)
-    
-    if match is not None:
-        parsed_date = datetime.strptime(match.group(), "%d.%m.%y")
-        return parsed_date.date().isoformat()
+    if result is None:
+        return None
 
-    match = re.search(r"\b\d{2}/\d{2}/\d{2}\b", text)
+    normalized_date, _ = result
+    return normalized_date
 
-    if match is not None:
-        parsed_date = datetime.strptime(match.group(), "%d/%m/%y")
-        return parsed_date.date().isoformat()
 
-    match = re.search(r"\b\d{4}-\d{2}-\d{2}\b", text)
-   
-    if match is not None:
-        parsed_date = datetime.strptime(match.group(), "%Y-%m-%d")
-        return parsed_date.date().isoformat()
+def _mask_date(text: str) -> str:
+    """Заменить найденную дату пробелами, сохранив позиции остального текста."""
+    result = _extract_date_with_span(text)
 
-    match = re.search(r"\b(\d{1,2})\s+([а-яё]+)\s+(\d{4})\b",text.lower())
+    if result is None:
+        return text
 
-    if match is not None:
-        day_text, month_text, year_text = match.groups()
-        month = RUSSIAN_MONTHS.get(month_text)
-
-        if month is not None:
-            parsed_date = datetime(int(year_text), month, int(day_text))
-            return parsed_date.date().isoformat()
-    
-    return None
+    _, (start, end) = result
+    return text[:start] + " " * (end - start) + text[end:]
 
 
 def extract_sku(text: str) -> str | None:
@@ -129,19 +178,42 @@ def extract_quantity_and_unit(
     if product is None:
         return None, None
 
-    match = DIRECT_QUANTITY_PATTERN.search(text)
+    text_without_date = _mask_date(text)
+    product_unit = product["unit"]
+    package_matches = [
+        match
+        for match in PACKAGE_QUANTITY_PATTERN.finditer(text_without_date)
+        if UNIT_CONVERSIONS[match.group("unit").lower()][0] == product_unit
+    ]
 
-    if match is None:
+    if len(package_matches) > 1:
         return None, None
 
-    quantity_text = match.group("qty")
-    source_unit = match.group("unit").lower()
+    if package_matches:
+        package_match = package_matches[0]
+        packages = int(package_match.group("packages"))
+        qty_per_package = float(
+            package_match.group("qty_per_package").replace(",", ".")
+        )
+        quantity = packages * qty_per_package
+        source_unit = package_match.group("unit").lower()
+    else:
+        direct_matches = [
+            match
+            for match in DIRECT_QUANTITY_PATTERN.finditer(text_without_date)
+            if UNIT_CONVERSIONS[match.group("unit").lower()][0] == product_unit
+        ]
 
-    quantity = float(
-        quantity_text
-        .replace("−", "-")
-        .replace(",", ".")
-    )
+        if len(direct_matches) != 1:
+            return None, None
+
+        match = direct_matches[0]
+        quantity = float(
+            match.group("qty")
+            .replace("−", "-")
+            .replace(",", ".")
+        )
+        source_unit = match.group("unit").lower()
 
     conversion = UNIT_CONVERSIONS.get(source_unit)
 
@@ -150,17 +222,52 @@ def extract_quantity_and_unit(
 
     base_unit, multiplier = conversion
 
-    if base_unit != product["unit"]:
+    if base_unit != product_unit:
         return None, None
 
     normalized_quantity = quantity * multiplier
 
-    return normalized_quantity, product["unit"]
+    return normalized_quantity, product_unit
+
+
+def extract_batch(text: str) -> str | None:
+    """Извлечь и нормализовать номер партии товара."""
+    match = re.search(
+        r"\bB-[A-Za-z]{3,4}-\d{3}-\d{3}\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if match is None:
+        return None
+
+    return match.group().upper()
+
+
+def extract_doc_no(text: str) -> str | None:
+    """Извлечь и нормализовать номер складского документа"""
+    match = re.search(r"\b[А-ЯЁ]{2}-\d{3}\b", text, flags=re.IGNORECASE)
+
+    if match is None:
+        return None
+
+    return match.group().upper()
 
 
 def normalize_movement(text: str) -> dict[str, Any]:
     """Преобразовать неструктурированную запись в единый словарь."""
-    # Эту функцию будем собирать по частям после небольших вспомогательных функций.
-    raise NotImplementedError
+    sku = extract_sku(text)
+    quantity, unit = extract_quantity_and_unit(text, sku)
+
+    return {
+        "date": extract_date(text),
+        "sku": sku,
+        "location": extract_location(text),
+        "operation": extract_operation(text),
+        "qty": quantity,
+        "unit": unit,
+        "batch": extract_batch(text),
+        "doc_no": extract_doc_no(text),
+    }
     
     

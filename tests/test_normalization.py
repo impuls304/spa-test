@@ -1,6 +1,109 @@
 """Тесты нормализации складских записей."""
 
-from inventory_ai.normalization import extract_operation, extract_date, extract_sku, extract_location
+import json
+from pathlib import Path
+
+import pytest
+
+from inventory_ai.normalization import (
+    extract_date,
+    extract_location,
+    extract_operation,
+    extract_sku,
+    normalize_movement,
+)
+
+
+DATASET_PATH = Path(__file__).resolve().parents[1] / "dataset.json"
+
+with DATASET_PATH.open(encoding="utf-8") as dataset_file:
+    MOVEMENTS_BY_ID = {
+        movement["id"]: movement["text"]
+        for movement in json.load(dataset_file)["movements"]
+    }
+
+EXPECTED_NORMALIZED_MOVEMENTS = {
+    "M1": {
+        "date": "2026-03-05",
+        "sku": "OIL-001",
+        "location": "MS-01",
+        "operation": "receipt",
+        "qty": 10.0,
+        "unit": "л",
+        "batch": None,
+        "doc_no": "НК-345",
+    },
+    "M2": {
+        "date": "2026-03-01",
+        "sku": "OIL-001",
+        "location": "MS-01",
+        "operation": "consume",
+        "qty": 0.45,
+        "unit": "л",
+        "batch": "B-OIL-001-012",
+        "doc_no": None,
+    },
+    "M3": {
+        "date": "2026-06-03",
+        "sku": "SCRB-020",
+        "location": "Сочи",
+        "operation": "writeoff",
+        "qty": 1.2,
+        "unit": "кг",
+        "batch": None,
+        "doc_no": None,
+    },
+    "M4": {
+        "date": "2026-03-07",
+        "sku": "WRAP-030",
+        "location": "MS-02",
+        "operation": "consume",
+        "qty": 3.5,
+        "unit": "кг",
+        "batch": "B-WRAP-030-004",
+        "doc_no": None,
+    },
+    "M5": {
+        "date": "2026-03-12",
+        "sku": "OIL-002",
+        "location": None,
+        "operation": "return",
+        "qty": 2.0,
+        "unit": "л",
+        "batch": None,
+        "doc_no": None,
+    },
+    "M6": {
+        "date": "2026-03-08",
+        "sku": "CONS-051",
+        "location": "MS-01",
+        "operation": "consume",
+        "qty": 48.0,
+        "unit": "пар",
+        "batch": None,
+        "doc_no": None,
+    },
+    "M7": {
+        "date": "2026-03-15",
+        "sku": "CONS-052",
+        "location": "MS-02",
+        "operation": "correction",
+        "qty": -120.0,
+        "unit": "шт",
+        "batch": None,
+        "doc_no": None,
+    },
+    "M8": {
+        "date": None,
+        "sku": "CONS-051",
+        "location": "Красная Поляна",
+        "operation": "receipt",
+        "qty": 200.0,
+        "unit": "пар",
+        "batch": None,
+        "doc_no": None,
+    },
+}
 
 
 def test_extract_operation_receipt() -> None:
@@ -87,6 +190,13 @@ def test_extract_date_russian_month_with_year_suffix() -> None:
     assert extract_date(text) == "2026-03-12"
 
 
+def test_extract_date_invalid_value() -> None:
+    """Некорректная календарная дата не останавливает обработку."""
+    text = "Возврат 35.15.2026: OIL-002, 2 л"
+
+    assert extract_date(text) is None
+
+
 def test_extract_sku_standard_format() -> None:
     """SKU в стандартном формате извлекается без изменения."""
     text = "05.03.2026 MS-01 приход OIL-001, 2 канистры по 5 л"
@@ -134,4 +244,15 @@ def test_extract_location_named_city() -> None:
     text = "03/06/26 Сочи списание SCRB-020 1,2 кг"
 
     assert extract_location(text) == "Сочи"
-    
+
+
+@pytest.mark.parametrize(
+    ("movement_id", "expected"),
+    EXPECTED_NORMALIZED_MOVEMENTS.items(),
+)
+def test_normalize_movement_from_dataset(
+    movement_id: str,
+    expected: dict[str, object],
+) -> None:
+    """Записи M1–M8 преобразуются в ожидаемую единую структуру."""
+    assert normalize_movement(MOVEMENTS_BY_ID[movement_id]) == expected

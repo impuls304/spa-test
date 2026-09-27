@@ -58,3 +58,34 @@ def test_convert_packages_to_base_quantity(
 ) -> None:
     """Количество упаковок умножается на содержимое одной упаковки"""
     assert extract_quantity_and_unit(text, sku) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "sku", "expected"),
+    [
+        (
+            "Возврат 12 марта 2026 г.: OIL-002, 2 л",
+            "OIL-002",
+            (2.0, "л"),
+        ),
+        (
+            "Возврат 12 марта 2026 г.: SCRB-020, 2 кг",
+            "SCRB-020",
+            (2.0, "кг"),
+        ),
+    ],
+)
+def test_date_is_not_mistaken_for_quantity(
+    text: str,
+    sku: str,
+    expected: tuple[float, str],
+) -> None:
+    """Год с сокращением `г.` не принимается за количество в граммах."""
+    assert extract_quantity_and_unit(text, sku) == expected
+
+
+def test_multiple_compatible_quantities_are_ambiguous() -> None:
+    """Несколько подходящих количеств не выбираются случайным образом."""
+    text = "расход OIL-001: 2 л, остаток после операции 3 л"
+
+    assert extract_quantity_and_unit(text, "OIL-001") == (None, None)
