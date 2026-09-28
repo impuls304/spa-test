@@ -226,7 +226,15 @@ def test_forecast_demand_for_dataset(
         params={},
     )
 
-    assert result["recommended_order_quantity"] == expected_order
+    required = {
+        "avg_daily_consumption", "forecast_demand", "current_stock",
+        "incoming_qty", "safety_stock", "reorder_point", "recommended_qty",
+        "estimated_cost", "stockout_date", "confidence", "explanation",
+    }
+    assert required <= result.keys()
+    assert result["explanation"]
+    assert result["requires_clarification"] is False
+    assert result["recommended_qty"] == expected_order
     assert result["estimated_cost"] == pytest.approx(expected_cost)
     assert result["stockout_date"] == expected_stockout
     assert result["confidence"] == pytest.approx(expected_confidence)
@@ -244,7 +252,7 @@ def test_forecast_demand_supports_growth_scenario(
     )
 
     assert result["weekly_average"] == pytest.approx(15.12)
-    assert result["recommended_order_quantity"] == pytest.approx(25.0)
+    assert result["recommended_qty"] == pytest.approx(25.0)
     assert result["estimated_cost"] == pytest.approx(31476.25)
 
 
@@ -259,3 +267,59 @@ def test_forecast_demand_rejects_unknown_sku(
             30,
             params={},
         )
+
+
+@pytest.mark.parametrize("weekly", [[7.0], [0.0, 0.0, 0.0, 28.0] * 3])
+def test_unreliable_forecast_requests_clarification(
+    forecast_history: dict[str, Any], weekly: list[float],
+) -> None:
+    """Короткая или волатильная история требует проверки."""
+    forecast_history["weekly_consumption"]["OIL-001"] = weekly
+    result = forecast_demand(forecast_history, "OIL-001", 30)
+    assert result["confidence"] < 0.75
+    assert result["requires_clarification"] is True
+    assert "Требуется уточнение" in result["explanation"]
+    assert calculate_confidence(weekly) < calculate_confidence([7.0] * 12)
+
+
+def test_confidence_threshold_boundary(
+    forecast_history: dict[str, Any],
+) -> None:
+    """Равенство порогу разрешено; сравнивается неокруглённая оценка."""
+    weekly = forecast_history["weekly_consumption"]["OIL-001"]
+    score = calculate_confidence(weekly)
+    result = forecast_demand(
+        forecast_history, "OIL-001", 30,
+        {"confidence_threshold": score},
+    )
+    assert result["requires_clarification"] is False
+    result = forecast_demand(
+        forecast_history, "OIL-001", 30,
+        {"confidence_threshold": score + 0.00001},
+    )
+    assert result["requires_clarification"] is True
+
+
+@pytest.mark.parametrize("threshold", [-0.1, 1.1])
+def test_invalid_confidence_threshold(
+    forecast_history: dict[str, Any], threshold: float,
+) -> None:
+    """Порог вне диапазона отклоняется."""
+    with pytest.raises(ValueError, match="Порог confidence"):
+        forecast_demand(
+            forecast_history, "OIL-001", 30,
+            {"confidence_threshold": threshold},
+        )
+
+
+def test_explanation_uses_calculation_inputs(
+    forecast_history: dict[str, Any],
+) -> None:
+    """Объяснение показывает остатки, правила поставщика и стоимость."""
+    result = forecast_demand(forecast_history, "OIL-001", 30)
+    explanation = result["explanation"]
+    for fragment in (
+        "54.00", "25.20", "50.4", "20", "8.80",
+        "Упаковка: 5, минимум: 10", "10 × 1259.05", "12590.50",
+    ):
+        assert fragment in explanation

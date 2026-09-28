@@ -12,6 +12,7 @@ DAYS_PER_WEEK = 7
 DEFAULT_WINDOW_WEEKS = 4
 DEFAULT_EXPECTED_HISTORY_WEEKS = 12
 DEFAULT_DEMAND_MULTIPLIER = 1.0
+DEFAULT_CONFIDENCE_THRESHOLD = 0.75
 
 
 def calculate_recent_weekly_average(
@@ -254,10 +255,12 @@ def forecast_demand(
         - current_stock
         - incoming_quantity,
     )
+    pack_size = settings.get("pack_size", product["pack_size"])
+    min_order_quantity = settings.get(
+        "min_order_quantity", product["min_order_qty"]
+    )
     recommended_order_quantity = round_order_quantity(
-        raw_order_quantity,
-        settings.get("pack_size", product["pack_size"]),
-        settings.get("min_order_quantity", product["min_order_qty"]),
+        raw_order_quantity, pack_size, min_order_quantity
     )
     unit_price = settings.get("unit_price", product["price"])
     if unit_price < 0:
@@ -285,19 +288,59 @@ def forecast_demand(
         window_weeks=window_weeks,
     )
 
+    confidence_threshold = settings.get(
+        "confidence_threshold", DEFAULT_CONFIDENCE_THRESHOLD
+    )
+    if not 0 <= confidence_threshold <= 1:
+        raise ValueError("Порог confidence должен быть от 0 до 1")
+
+    requires_clarification = confidence < confidence_threshold
+    unit = product["unit"]
+    recent = weekly_history[-window_weeks:]
+    observed_count = sum(value is not None for value in recent)
+    explanation = (
+        f"Окно: последние {len(recent)} недель; "
+        f"известных наблюдений: {observed_count}. "
+        f"Средний недельный расход с множителем {demand_multiplier:g}: "
+        f"{weekly_average:.4f} {unit}. "
+        f"Дневной расход: {weekly_average:.4f} / {DAYS_PER_WEEK} "
+        f"= {daily_average:.4f} {unit}. "
+        f"Прогноз на {horizon_days} дней: {forecast_quantity:.2f} {unit}. "
+        f"Страховой запас на {safety_stock_days} дней: "
+        f"{safety_stock:.2f} {unit}. "
+        f"Точка заказа при сроке поставки {lead_time_days} дней: "
+        f"{reorder_point:.2f} {unit}. "
+        f"Закупка до округления: max(0, {forecast_quantity:.2f} "
+        f"+ {safety_stock:.2f} - {current_stock:g} "
+        f"- {incoming_quantity:g}) = {raw_order_quantity:.2f} {unit}. "
+        f"Упаковка: {pack_size:g}, минимум: {min_order_quantity:g}; "
+        f"рекомендовано: {recommended_order_quantity:g} {unit}. "
+        f"Стоимость: {recommended_order_quantity:g} × {unit_price:g} "
+        f"= {estimated_cost:.2f}. "
+        f"Дата исчерпания считается от {as_of.isoformat()} "
+        "только по текущему остатку, без поставок в пути. "
+        "Промежуточные числа показаны округлённо. "
+        f"Confidence: {confidence:.3f}; порог: {confidence_threshold:g}."
+    )
+    if requires_clarification:
+        explanation += (
+            " Требуется уточнение: проверьте полноту, длину истории "
+            "и колебания расхода перед использованием рекомендации."
+        )
+
     return {
         "sku": sku,
         "unit": product["unit"],
         "horizon_days": horizon_days,
         "weekly_average": round(weekly_average, 4),
-        "daily_average": round(daily_average, 4),
-        "forecast_quantity": round(forecast_quantity, 2),
+        "avg_daily_consumption": round(daily_average, 4),
+        "forecast_demand": round(forecast_quantity, 2),
         "current_stock": current_stock,
-        "incoming_quantity": incoming_quantity,
+        "incoming_qty": incoming_quantity,
         "safety_stock": round(safety_stock, 2),
         "reorder_point": round(reorder_point, 2),
         "raw_order_quantity": round(raw_order_quantity, 2),
-        "recommended_order_quantity": recommended_order_quantity,
+        "recommended_qty": recommended_order_quantity,
         "estimated_cost": round(estimated_cost, 2),
         "stockout_date": calculate_stockout_date(
             as_of,
@@ -310,4 +353,6 @@ def forecast_demand(
             else None
         ),
         "confidence": round(confidence, 3),
+        "requires_clarification": requires_clarification,
+        "explanation": explanation,
     }

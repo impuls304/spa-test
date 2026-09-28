@@ -1,0 +1,127 @@
+[
+  {
+    "id": "Q01",
+    "question": "Сколько масла закупить на три месяца и сколько это будет стоить?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q02",
+    "question": "Что нужно заказать в ближайшие 14 дней?",
+    "expected": {"intent": "reorder_list", "status": "ok", "horizon_days": 14}
+  },
+  {
+    "id": "Q03",
+    "question": "Какой бюджет закупок на квартал?",
+    "expected": {"intent": "budget", "status": "ok", "horizon_days": 90}
+  },
+  {
+    "id": "Q04",
+    "question": "Что закончится до следующей поставки в Сочи?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q05",
+    "question": "Какие партии сгорят в этом месяце?",
+    "expected": {"intent": "expiry_risk", "status": "data_unavailable"}
+  },
+  {
+    "id": "Q06",
+    "question": "Насколько подорожало ароматическое масло у поставщика?",
+    "expected": {"intent": "price_dynamics", "status": "data_unavailable"}
+  },
+  {
+    "id": "Q07",
+    "question": "Сколько альгинатной маски осталось в Красной Поляне?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q08",
+    "question": "Посчитай закупку скраба на полгода при лимите 200 тысяч",
+    "expected": {"intent": "forecast_purchase", "status": "ok", "sku": "SCRB-020", "horizon_days": 180}
+  },
+  {
+    "id": "Q09",
+    "question": "Почему план закупок вырос по сравнению с прошлым кварталом?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q10",
+    "question": "Сколько стоит закупить всё, что в риске дефицита?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q11",
+    "question": "Сколько масла уйдёт за месяц, если загрузка вырастет на 20%?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q12",
+    "question": "Заказать масло",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q13",
+    "question": "Сколько это будет стоить?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q14",
+    "question": "Когда привезут заказ от поставщика?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q15",
+    "question": "Какая погода в Сочи на выходных?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  },
+  {
+    "id": "Q16",
+    "question": "Посчитай закупку SCRB-020 на 30 дней",
+    "expected": {"intent": "forecast_purchase", "status": "ok", "sku": "SCRB-020", "horizon_days": 30}
+  },
+  {
+    "id": "Q17",
+    "question": "Во сколько обойдётся пополнение склада на 30 дней?",
+    "expected": {"intent": "budget", "status": "ok", "sku": null, "horizon_days": 30}
+  },
+  {
+    "id": "Q18",
+    "question": "Какие товары в риске дефицита на 30 дней?",
+    "expected": {"intent": "deficit_risk", "status": "ok", "horizon_days": 30}
+  },
+  {
+    "id": "Q19",
+    "question": "Что нужно заказать на 30 дней?",
+    "expected": {"intent": "reorder_list", "status": "ok", "horizon_days": 30}
+  },
+  {
+    "id": "Q20",
+    "question": "Посчитай скраб на 30 дней при росте расхода на 15%",
+    "expected": {"intent": "forecast_purchase", "status": "ok", "sku": "SCRB-020", "horizon_days": 30}
+  },
+  {
+    "id": "Q21",
+    "question": "Посчитай маску WRAP-030 на 90 дней при снижении расхода на 10%",
+    "expected": {"intent": "forecast_purchase", "status": "ok", "sku": "WRAP-030", "horizon_days": 90}
+  },
+  {
+    "id": "Q22",
+    "question": "Какой бюджет закупок на месяц?",
+    "expected": {"intent": "budget", "status": "ok", "horizon_days": 30}
+  },
+  {
+    "id": "Q23",
+    "question": "Насколько изменилась цена SCRB-020?",
+    "expected": {"intent": "price_dynamics", "status": "data_unavailable", "sku": "SCRB-020"}
+  },
+  {
+    "id": "Q24",
+    "question": "Какие партии SCRB-020 сгорят в этом месяце?",
+    "expected": {"intent": "expiry_risk", "status": "data_unavailable", "sku": "SCRB-020"}
+  },
+  {
+    "id": "Q25",
+    "question": "Какая температура завтра?",
+    "expected": {"intent": "unknown", "status": "requires_clarification"}
+  }
+]
