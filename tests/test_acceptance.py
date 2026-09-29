@@ -37,9 +37,10 @@ def test_control_question(
     context: dict[str, Any], case: dict[str, Any],
 ) -> None:
     """Каждый контрольный вопрос возвращает согласованный результат."""
-    parsed, _, answer = answer_question(case["question"], context)
+    parsed, confidence, answer = answer_question(case["question"], context)
     for field, expected in case["expected"].items():
         assert parsed.get(field) == expected
+    assert 0 <= confidence <= 1
     assert answer
 
 

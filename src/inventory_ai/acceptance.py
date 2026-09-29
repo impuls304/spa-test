@@ -94,7 +94,8 @@ def build_end_to_end_scenario(history: dict[str, Any]) -> dict[str, Any]:
         "purchase_plan": plan,
         "budget": round(sum(item["cost"] for item in plan), 2),
         "limitations": [
-            "Риск дефицита сравнивает прогноз с текущим остатком без поставок.",
+            "Риск дефицита сравнивает прогноз с текущим остатком "
+            "без поставок.",
             "В расчёт включены только SKU с историей расхода.",
             "Автоматическое размещение заказа не выполняется.",
         ],

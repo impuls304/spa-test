@@ -60,9 +60,9 @@ def match_location(text: str) -> str | None:
 
     for size in range(max_words, 0, -1):
         matches = {
-            alias_index[" ".join(words[start : start + size])]
+            alias_index[" ".join(words[start:start + size])]
             for start in range(len(words) - size + 1)
-            if " ".join(words[start : start + size]) in alias_index
+            if " ".join(words[start:start + size]) in alias_index
         }
         if len(matches) == 1:
             return matches.pop()

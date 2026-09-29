@@ -118,73 +118,73 @@ def test_extract_operation_consume() -> None:
     text = "MS-01 расход OIL-001 - 450 мл"
 
     assert extract_operation(text) == "consume"
-    
-    
+
+
 def test_extract_operation_writeoff() -> None:
     """Русское слово «списание» преобразуется в writeoff."""
     text = "03/06/26 Сочи списание SCRB-020 1,2 кг, истек срок"
 
     assert extract_operation(text) == "writeoff"
-    
-    
+
+
 def test_extract_operation_return() -> None:
     """Русское слово «возврат» преобразуется в return."""
     text = "Возврат 12 марта 2026 г.: OIL-002, 2л, брак упаковки"
 
     assert extract_operation(text) == "return"
-    
-    
+
+
 def test_extract_operation_correction() -> None:
     """Русское слово «корректировка» преобразуется в correction."""
     text = "Корректировка 15.03.2026, MS-02, CONS-052: -120 шт"
 
     assert extract_operation(text) == "correction"
-    
- 
+
+
 def test_extract_date_dotted_format() -> None:
-    """Нормализация формата даты в ISO формат"""
-    text = "05.03.2026 MS-01 приход OIL-001" 
-    
+    """Нормализовать формат даты в ISO-формат."""
+    text = "05.03.2026 MS-01 приход OIL-001"
+
     assert extract_date(text) == "2026-03-05"
-    
-    
+
+
 def test_extract_date_missing() -> None:
-    """Если даты нет возвращаем None"""
+    """Вернуть None, если даты нет."""
     text = "Приход тапочек одноразовых"
-    
+
     assert extract_date(text) is None
-    
-    
+
+
 def test_extract_date_short_year() -> None:
-    """Проверка короткого форматы даты"""
-    text  = "07.03.26 ms-02 WRAP 030 расход 3,5 кг"
-    
+    """Распознать дату с коротким обозначением года."""
+    text = "07.03.26 ms-02 WRAP 030 расход 3,5 кг"
+
     assert extract_date(text) == "2026-03-07"
-    
+
 
 def test_extract_date_slash_format() -> None:
-    """Дата с косыми чертами преобразуется в ISO-формат"""
+    """Преобразовать дату с косыми чертами в ISO-формат."""
     text = "03/06/26 Сочи списание SCRB-020 1,2 кг"
 
     assert extract_date(text) == "2026-06-03"
 
 
 def test_extract_date_iso_format() -> None:
-    """Дата cоответствующая YYYY-MM-DD ISO-формат"""
+    """Сохранить дату, соответствующую ISO-формату YYYY-MM-DD."""
     text = "2026-03-08; MS-01; CONS-051; расход; 48 пар"
 
     assert extract_date(text) == "2026-03-08"
 
 
 def test_extract_date_russian_month() -> None:
-    """Дата с русским названием месяца преобразуется в ISO-формат"""
+    """Преобразовать дату с русским названием месяца в ISO-формат."""
     text = "1 марта 2026 MS-01 расход oil 001 — 450 мл"
 
-    assert extract_date(text) == "2026-03-01"  
-    
+    assert extract_date(text) == "2026-03-01"
+
 
 def test_extract_date_russian_month_with_year_suffix() -> None:
-    """Сокращение (г.) не мешает извлечению даты"""
+    """Распознать дату с сокращением года `г.`."""
     text = "Возврат 12 марта 2026 г.: OIL-002, 2 л"
 
     assert extract_date(text) == "2026-03-12"
@@ -205,10 +205,10 @@ def test_extract_sku_standard_format() -> None:
 
 
 def test_extract_sku_space_and_lowercase() -> None:
-    """SKU с пробелом и строчными буквами приводим к стандартному формату"""
+    """Привести SKU с пробелом и строчными буквами к стандарту."""
     text = "1 марта 2026 MS-01 расход oil 001 — 450 мл"
 
-    assert extract_sku(text) == "OIL-001"  
+    assert extract_sku(text) == "OIL-001"
 
 
 def test_extract_sku_unknown_code() -> None:
@@ -219,7 +219,7 @@ def test_extract_sku_unknown_code() -> None:
 
 
 def test_extract_sku_by_product_name() -> None:
-    """SKU определяется по названию товара, если явного кода нет"""
+    """Определить SKU по названию товара, если явного кода нет."""
     text = "Приход тапочек одноразовых, 4 уп. по 50 пар, Красная Поляна"
 
     assert extract_sku(text) == "CONS-051"

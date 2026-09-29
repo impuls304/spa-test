@@ -44,36 +44,6 @@ def context() -> dict[str, Any]:
     }
 
 
-@pytest.mark.parametrize("index,intent,status", [
-    (0, "unknown", "requires_clarification"),
-    (1, "reorder_list", "ok"),
-    (2, "budget", "ok"),
-    (3, "unknown", "requires_clarification"),
-    (4, "expiry_risk", "data_unavailable"),
-    (5, "price_dynamics", "data_unavailable"),
-    (6, "unknown", "requires_clarification"),
-    (7, "forecast_purchase", "ok"),
-    (8, "unknown", "requires_clarification"),
-    (9, "unknown", "requires_clarification"),
-    (10, "unknown", "requires_clarification"),
-    (11, "unknown", "requires_clarification"),
-    (12, "unknown", "requires_clarification"),
-    (13, "unknown", "requires_clarification"),
-    (14, "unknown", "requires_clarification"),
-])
-def test_dataset(
-    context: dict[str, Any], index: int, intent: str, status: str,
-) -> None:
-    """Все вопросы имеют объяснимый результат без API."""
-    parsed, confidence, answer = questions.answer_question(
-        DATA["questions"][index], context,
-    )
-    assert parsed["intent"] == intent
-    assert parsed["status"] == status
-    assert 0 <= confidence <= 1
-    assert answer
-
-
 def test_budget_and_limit(context: dict[str, Any]) -> None:
     """Общий бюджет берётся из расчётов, лимит не урезает потребность."""
     parsed, _, answer = questions.answer_question(

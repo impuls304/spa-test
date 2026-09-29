@@ -1,9 +1,14 @@
 """Нормализация текстовых записей о движении товара."""
 
-from typing import Any
 import re
 from datetime import datetime
-from inventory_ai.catalog import get_product_by_sku, get_valid_skus, match_sku_by_product_name
+from typing import Any
+
+from inventory_ai.catalog import (
+    get_product_by_sku,
+    get_valid_skus,
+    match_sku_by_product_name,
+)
 from inventory_ai.locations import match_location
 
 RUSSIAN_MONTHS = {
@@ -71,7 +76,7 @@ PACKAGE_QUANTITY_PATTERN = re.compile(
 def extract_operation(text: str) -> str | None:
     """Извлечь и нормализовать тип складской операции."""
     normalized_text = text.lower()
-    
+
     if "приход" in normalized_text:
         return "receipt"
     if "расход" in normalized_text:
@@ -131,7 +136,7 @@ def extract_date(text: str) -> str | None:
 
 
 def _mask_date(text: str) -> str:
-    """Заменить найденную дату пробелами, сохранив позиции остального текста."""
+    """Заменить найденную дату пробелами, сохранив позиции текста."""
     result = _extract_date_with_span(text)
 
     if result is None:
@@ -142,8 +147,8 @@ def _mask_date(text: str) -> str:
 
 
 def extract_sku(text: str) -> str | None:
-    """Извлекаем SKU и приводим его к стандартному написанию"""
-    match = re.search(r"\b([A-Za-z]{3,4})[-\s](\d{3})\b",text)
+    """Извлечь SKU и привести его к стандартному написанию."""
+    match = re.search(r"\b([A-Za-z]{3,4})[-\s](\d{3})\b", text)
 
     if match is None:
         return match_sku_by_product_name(text)
@@ -155,11 +160,15 @@ def extract_sku(text: str) -> str | None:
         return None
 
     return normalized_sku
- 
+
 
 def extract_location(text: str) -> str | None:
     """Извлечь и нормализовать локацию или склад."""
-    match = re.search(r"\bms[-\s](\d{2})\b",text,flags=re.IGNORECASE)
+    match = re.search(
+        r"\bms[-\s](\d{2})\b",
+        text,
+        flags=re.IGNORECASE,
+    )
 
     if match is not None:
         location_number = match.group(1)
@@ -269,5 +278,3 @@ def normalize_movement(text: str) -> dict[str, Any]:
         "batch": extract_batch(text),
         "doc_no": extract_doc_no(text),
     }
-    
-    

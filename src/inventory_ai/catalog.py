@@ -35,7 +35,7 @@ def lemmatize_text(text: str) -> frozenset[str]:
 
 @cache
 def load_catalog() -> tuple[dict[str, Any], ...]:
-    """Загрузить справочник один раз и вернуть неизменяемую коллекцию записей."""
+    """Загрузить справочник и вернуть неизменяемую коллекцию записей."""
     with CATALOG_PATH.open(encoding="utf-8") as catalog_file:
         return tuple(json.load(catalog_file))
 
@@ -87,7 +87,7 @@ def get_product_lemma_index() -> dict[str, frozenset[str]]:
 
 
 def match_sku_by_product_name(text: str) -> str | None:
-    """Сопоставить текст с названием товара без угадывания при неоднозначности."""
+    """Сопоставить текст с товаром без угадывания при неоднозначности."""
     text_lemmas = lemmatize_text(text)
     lemma_index = get_product_lemma_index()
     product_lemmas = get_product_lemmas_by_sku()
